@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Mic, Sun, Moon, ArrowRightLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -143,20 +142,41 @@ const Index = () => {
 
   const parseAndConvert = async (text: string) => {
     try {
-      // Parse the speech input using regex
+      console.log('Parsing speech input:', text);
+      
+      // Clean up the text
+      const cleanText = text.toLowerCase().trim();
+      
+      // If the speech is too short or incomplete, ask user to try again
+      if (cleanText.length < 5 || cleanText.split(' ').length < 3) {
+        throw new Error('Speech input too short or incomplete');
+      }
+      
+      // More flexible parsing patterns
       const patterns = [
+        // "convert 100 dollars to euros"
         /convert\s+(\d+(?:\.\d+)?)\s+(\w+)\s+to\s+(\w+)/i,
+        // "100 dollars to euros"
         /(\d+(?:\.\d+)?)\s+(\w+)\s+to\s+(\w+)/i,
-        /(\d+(?:\.\d+)?)\s+(\w+)\s+in\s+(\w+)/i
+        // "100 dollars in euros"
+        /(\d+(?:\.\d+)?)\s+(\w+)\s+in\s+(\w+)/i,
+        // "how much is 100 dollars in euros"
+        /how\s+much\s+is\s+(\d+(?:\.\d+)?)\s+(\w+)\s+in\s+(\w+)/i,
+        // "what is 100 dollars in euros"
+        /what\s+is\s+(\d+(?:\.\d+)?)\s+(\w+)\s+in\s+(\w+)/i
       ];
 
       let match = null;
       for (const pattern of patterns) {
-        match = text.match(pattern);
-        if (match) break;
+        match = cleanText.match(pattern);
+        if (match) {
+          console.log('Pattern matched:', pattern, match);
+          break;
+        }
       }
 
       if (!match) {
+        console.log('No pattern matched for:', cleanText);
         throw new Error('Could not parse currency conversion request');
       }
 
@@ -164,11 +184,26 @@ const Index = () => {
       const fromCurrency = normalizeCurrency(match[2]);
       const toCurrency = normalizeCurrency(match[3]);
 
+      console.log('Parsed values:', { amount, fromCurrency, toCurrency });
+
+      // Validate the parsed values
+      if (isNaN(amount) || amount <= 0) {
+        throw new Error('Invalid amount');
+      }
+
+      if (fromCurrency === toCurrency) {
+        throw new Error('Source and target currencies cannot be the same');
+      }
+
       await convertCurrency(amount, fromCurrency, toCurrency);
       
     } catch (error) {
       console.error('Parsing error:', error);
-      toast.error("😅 Oops! Couldn't understand that. Please try again!");
+      if (error.message.includes('too short') || error.message.includes('incomplete')) {
+        toast.error("🎤 Please speak the complete phrase. Try: 'Convert 100 dollars to euros'");
+      } else {
+        toast.error("😅 I didn't understand that. Try saying: 'Convert 100 dollars to euros'");
+      }
     }
   };
 
