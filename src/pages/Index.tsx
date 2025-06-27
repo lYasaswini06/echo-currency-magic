@@ -152,25 +152,60 @@ const Index = () => {
         throw new Error('Speech input too short or incomplete');
       }
       
-      // More flexible parsing patterns
+      // More flexible parsing patterns including currency symbols
       const patterns = [
+        // "convert $100 to euros" or "convert €100 to dollars"
+        /convert\s+[$€£¥](\d+(?:\.\d+)?)\s+to\s+(\w+)/i,
         // "convert 100 dollars to euros"
         /convert\s+(\d+(?:\.\d+)?)\s+(\w+)\s+to\s+(\w+)/i,
+        // "$100 to euros" or "€100 to dollars"
+        /[$€£¥](\d+(?:\.\d+)?)\s+to\s+(\w+)/i,
         // "100 dollars to euros"
         /(\d+(?:\.\d+)?)\s+(\w+)\s+to\s+(\w+)/i,
         // "100 dollars in euros"
         /(\d+(?:\.\d+)?)\s+(\w+)\s+in\s+(\w+)/i,
+        // "how much is $100 in euros"
+        /how\s+much\s+is\s+[$€£¥](\d+(?:\.\d+)?)\s+in\s+(\w+)/i,
         // "how much is 100 dollars in euros"
         /how\s+much\s+is\s+(\d+(?:\.\d+)?)\s+(\w+)\s+in\s+(\w+)/i,
+        // "what is $100 in euros"
+        /what\s+is\s+[$€£¥](\d+(?:\.\d+)?)\s+in\s+(\w+)/i,
         // "what is 100 dollars in euros"
         /what\s+is\s+(\d+(?:\.\d+)?)\s+(\w+)\s+in\s+(\w+)/i
       ];
 
       let match = null;
+      let amount = 0;
+      let fromCurrency = '';
+      let toCurrency = '';
+
       for (const pattern of patterns) {
         match = cleanText.match(pattern);
         if (match) {
           console.log('Pattern matched:', pattern, match);
+          
+          // Handle patterns with currency symbols
+          if (pattern.source.includes('[$€£¥]')) {
+            amount = parseFloat(match[1]);
+            // Determine currency from symbol context
+            if (cleanText.includes('$')) {
+              fromCurrency = 'USD';
+            } else if (cleanText.includes('€')) {
+              fromCurrency = 'EUR';
+            } else if (cleanText.includes('£')) {
+              fromCurrency = 'GBP';
+            } else if (cleanText.includes('¥')) {
+              fromCurrency = 'JPY';
+            } else {
+              fromCurrency = 'USD'; // default
+            }
+            toCurrency = normalizeCurrency(match[2]);
+          } else {
+            // Handle patterns with currency names
+            amount = parseFloat(match[1]);
+            fromCurrency = normalizeCurrency(match[2]);
+            toCurrency = normalizeCurrency(match[3]);
+          }
           break;
         }
       }
@@ -179,10 +214,6 @@ const Index = () => {
         console.log('No pattern matched for:', cleanText);
         throw new Error('Could not parse currency conversion request');
       }
-
-      const amount = parseFloat(match[1]);
-      const fromCurrency = normalizeCurrency(match[2]);
-      const toCurrency = normalizeCurrency(match[3]);
 
       console.log('Parsed values:', { amount, fromCurrency, toCurrency });
 
@@ -202,7 +233,7 @@ const Index = () => {
       if (error.message.includes('too short') || error.message.includes('incomplete')) {
         toast.error("🎤 Please speak the complete phrase. Try: 'Convert 100 dollars to euros'");
       } else {
-        toast.error("😅 I didn't understand that. Try saying: 'Convert 100 dollars to euros'");
+        toast.error("😅 I didn't understand that. Try saying: 'Convert 100 dollars to euros' or 'Convert $100 to euros'");
       }
     }
   };
