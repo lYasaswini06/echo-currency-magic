@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Mic, Sun, Moon, ArrowRightLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -99,8 +100,8 @@ const Index = () => {
     try {
       console.log('Converting:', { amount, from, to });
 
-      // Fetch exchange rate
-      const response = await fetch(`https://api.exchangerate.host/convert?from=${from}&to=${to}&amount=${amount}`);
+      // Use exchangerate-api.com which provides free access without API key
+      const response = await fetch(`https://api.exchangerate-api.com/v4/latest/${from}`);
       
       if (!response.ok) {
         throw new Error('Failed to fetch exchange rate');
@@ -108,15 +109,18 @@ const Index = () => {
 
       const data = await response.json();
       
-      if (!data.success) {
-        throw new Error('Invalid currency conversion');
+      if (!data.rates || !data.rates[to]) {
+        throw new Error('Currency not supported');
       }
+
+      const exchangeRate = data.rates[to];
+      const convertedAmount = Math.round(amount * exchangeRate * 100) / 100;
 
       const result = {
         amount,
         fromCurrency: from,
         toCurrency: to,
-        convertedAmount: Math.round(data.result * 100) / 100,
+        convertedAmount,
         fromSymbol: currencySymbols[from] || '💰',
         toSymbol: currencySymbols[to] || '💰'
       };
